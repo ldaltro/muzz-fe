@@ -2,8 +2,7 @@ import "@testing-library/jest-dom";
 import { afterEach, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import { act } from "@testing-library/react";
-
-export const storeResetFns = new Set<() => void>();
+import { storeResetFns } from "./store-utils";
 
 afterEach(() => {
   cleanup();
@@ -28,3 +27,6 @@ Object.defineProperty(window, "matchMedia", {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// Import store setup to register stores for reset
+import "./store-setup";

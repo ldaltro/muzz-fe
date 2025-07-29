@@ -1,42 +1,19 @@
 import { act } from "@testing-library/react";
-import { storeResetFns } from "./setup";
 
-export const createMockStore = <T extends object>(initialState: T, createFn: any) => {
-  let state = { ...initialState };
-  const listeners = new Set<() => void>();
+const storeResetFns = new Set<() => void>();
 
-  const setState = (partial: Partial<T> | ((state: T) => Partial<T>)) => {
-    const nextState = typeof partial === "function" ? partial(state) : partial;
-    state = { ...state, ...nextState };
-    listeners.forEach((listener) => listener());
-  };
+export { storeResetFns };
 
-  const getState = () => state;
-
-  const subscribe = (listener: () => void) => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  };
-
-  const destroy = () => {
-    listeners.clear();
-  };
-
+export const resetStore = <T extends object>(
+  store: any,
+  initialState: T
+) => {
   const reset = () => {
-    state = { ...initialState };
-    listeners.forEach((listener) => listener());
+    store.setState(initialState, true);
   };
-
+  
   storeResetFns.add(reset);
-
-  const store = {
-    setState,
-    getState,
-    subscribe,
-    destroy,
-  };
-
-  return createFn(setState, getState, store);
+  return reset;
 };
 
 export const waitForStoreUpdate = async (callback: () => void) => {
