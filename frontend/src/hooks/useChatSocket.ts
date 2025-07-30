@@ -33,13 +33,13 @@ export const useChatSocket = (
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      maxReconnectionAttempts: 5,
+      reconnectionAttempts: 5,
       timeout: 20000,
     });
     socket.current = newSocket;
 
     newSocket.on("connect", () => {
-      console.log("Socket connected:", newSocket.id);
+
       setConnectionState('connected');
       setReconnectAttempts(0);
       setLastError(null);
@@ -47,7 +47,7 @@ export const useChatSocket = (
     });
 
     newSocket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
+
       if (reason === 'io server disconnect' || reason === 'io client disconnect') {
         setConnectionState('disconnected');
       } else {
@@ -62,13 +62,13 @@ export const useChatSocket = (
     });
 
     newSocket.on("reconnect_attempt", (attemptNumber) => {
-      console.log(`Reconnection attempt ${attemptNumber}`);
+
       setConnectionState('reconnecting');
       setReconnectAttempts(attemptNumber);
     });
 
-    newSocket.on("reconnect", (attemptNumber) => {
-      console.log(`Reconnected after ${attemptNumber} attempts`);
+    newSocket.on("reconnect", () => {
+
       setConnectionState('connected');
       setReconnectAttempts(0);
       setLastError(null);
@@ -86,12 +86,12 @@ export const useChatSocket = (
     });
 
     newSocket.on("receive_message", (message: ChatMessage) => {
-      console.log("Message received:", message);
+
       onMessageReceived(message);
     });
 
     return () => {
-      console.log("Disconnecting socket...");
+
       newSocket.disconnect();
     };
   }, [room, onMessageReceived]);
