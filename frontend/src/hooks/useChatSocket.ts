@@ -16,10 +16,6 @@ export const useChatSocket = (
   const socket = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
-  const handleMessageReceived = useCallback(onMessageReceived, [
-    onMessageReceived,
-  ]);
-
   useEffect(() => {
     if (!room) return;
 
@@ -39,14 +35,14 @@ export const useChatSocket = (
 
     newSocket.on("receive_message", (message: ChatMessage) => {
       console.log("Message received:", message);
-      handleMessageReceived(message);
+      onMessageReceived(message);
     });
 
     return () => {
       console.log("Disconnecting socket...");
       newSocket.disconnect();
     };
-  }, [room, handleMessageReceived]);
+  }, [room, onMessageReceived]);
 
   const sendMessage = (message: ChatMessage) => {
     if (socket.current && socket.current.connected && room) {

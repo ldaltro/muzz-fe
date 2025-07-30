@@ -20,12 +20,13 @@ describe('groupMessagesWithTimestamps', () => {
 
     const grouped = groupMessagesWithTimestamps(messages);
 
-    // Only one day heading with time for all messages on same day
-    expect(grouped).toHaveLength(4);
+    // Should have two timestamp headings: one at start and one for hour gap
+    expect(grouped).toHaveLength(5);
     expect(grouped[0].type).toBe('timestamp'); // Today 10:00 AM
     expect(grouped[1].type).toBe('message');   // Hello
     expect(grouped[2].type).toBe('message');   // Hi there
-    expect(grouped[3].type).toBe('message');   // How are you?
+    expect(grouped[3].type).toBe('timestamp'); // Today 12:00 PM (hour gap)
+    expect(grouped[4].type).toBe('message');   // How are you?
   });
 
   it('should handle empty messages', () => {

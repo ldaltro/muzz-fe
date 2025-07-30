@@ -3,6 +3,7 @@ import {
   isToday,
   isYesterday,
   differenceInSeconds,
+  differenceInHours,
 } from "date-fns";
 
 export interface Message {
@@ -62,14 +63,18 @@ export const groupMessagesWithTimestamps = (
     const messageDate = new Date(message.timestamp);
     const currentDay = format(messageDate, "yyyy-MM-dd");
 
-    // Add day heading if it's a new day
-    if (currentDay !== lastDay) {
+    // Add timestamp heading if it's a new day OR more than 1 hour since last message
+    const shouldAddTimestamp = currentDay !== lastDay || 
+                              (lastMessageDate && differenceInHours(messageDate, lastMessageDate) >= 1);
+
+    if (shouldAddTimestamp) {
       const dayHeading = formatDayHeading(messageDate);
       grouped.push({
         type: "timestamp",
         content: `${dayHeading} ${format(messageDate, "h:mm a")}`,
         day: dayHeading,
         time: format(messageDate, "h:mm a"),
+        timestamp: messageDate.toISOString(),
       });
       lastDay = currentDay;
     }

@@ -32,17 +32,14 @@ const ChatTab = () => {
     return [currentUser.id, currentRecipient.id].sort().join("-");
   }, [currentUser, currentRecipient]);
 
-  const handleMessageReceived = useCallback(
-    (message: {
-      uuid?: string;
-      senderId: number;
-      recipientId: number;
-      content: string;
-    }) => {
-      createMessage(message);
-    },
-    [createMessage]
-  );
+  const handleMessageReceived = useCallback((message: {
+    uuid?: string;
+    senderId: number;
+    recipientId: number;
+    content: string;
+  }) => {
+    createMessage(message);
+  }, [createMessage]);
 
   const { isConnected, sendMessage } = useChatSocket(
     roomId,
@@ -81,9 +78,14 @@ const ChatTab = () => {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-[5px]">
         <div className="flex flex-col">
-          {groupedMessages.map((group, index) => (
-            <MessageGroup key={index} group={group} />
-          ))}
+          {groupedMessages.map((group) => {
+            const key = group.type === 'timestamp' 
+              ? `timestamp-${group.timestamp}` 
+              : `message-${group.message?.uuid || group.message?.id}`;
+            return (
+              <MessageGroup key={key} group={group} />
+            );
+          })}
         </div>
       </div>
       <div className="p-[20px] px-[10px] space-y-2 border-t border-gray-200">
