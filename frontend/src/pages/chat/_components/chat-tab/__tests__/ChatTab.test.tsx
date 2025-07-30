@@ -66,6 +66,7 @@ const createDefaultUserStore = () => ({
 const createDefaultMessageStore = () => ({
   messages: mockMessages,
   createMessage: vi.fn(),
+  setMessages: vi.fn(),
 });
 
 let defaultUserStore = createDefaultUserStore();
@@ -104,7 +105,8 @@ describe("ChatTab", () => {
     mockWebSocketState.isConnected = true;
     mockWebSocketState.sendMessage.mockReset();
     
-    mockUseChatSocket.mockReturnValue(mockWebSocketState);
+        mockUseChatSocket.mockReturnValue(mockWebSocketState);
+    defaultMessageStore.setMessages.mockClear();
   });
 
   afterEach(() => {

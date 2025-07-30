@@ -19,10 +19,12 @@ export type MessageInput = {
 type MessagesState = {
   messages: Message[];
   createMessage: (message: MessageInput) => void;
+  setMessages: (messages: Message[]) => void;
 };
 
-const useMessagesStore = create<MessagesState>()((set) => ({
-  messages: [],
+const useMessagesStore = create<MessagesState>((set) => ({
+    messages: [],
+  setMessages: (messages: Message[]) => set({ messages }),
   createMessage: (message: MessageInput) =>
     set((state) => {
       if (message.uuid && state.messages.some(msg => msg.uuid === message.uuid)) {
