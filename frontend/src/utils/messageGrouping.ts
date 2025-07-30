@@ -1,4 +1,9 @@
-import { format } from "date-fns";
+import {
+  format,
+  isToday,
+  isYesterday,
+  differenceInSeconds,
+} from "date-fns";
 
 export interface Message {
   id: number;
@@ -10,38 +15,31 @@ export interface Message {
 }
 
 export interface MessageGroup {
-  type: "timestamp" | "message";
+  type: "timestamp" | "message" | "message-group";
   content: string;
   timestamp?: string;
   message?: Message;
+  messages?: Message[];
   day?: string;
   time?: string;
+  isGroupStart?: boolean;
+  isGroupEnd?: boolean;
 }
 
-const isSameDay = (date1: Date, date2: Date): boolean => {
-  return (
-    date1.getFullYear() === date2.getFullYear() &&
-    date1.getMonth() === date2.getMonth() &&
-    date1.getDate() === date2.getDate()
-  );
-};
 
 
-
+const isWithinGroupingThreshold = (
+  date1: Date,
+  date2: Date,
+  thresholdSeconds = 20
+): boolean =>
+  Math.abs(differenceInSeconds(date1, date2)) <= thresholdSeconds;
 
 
 const formatDayHeading = (date: Date): string => {
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-
-  if (isSameDay(date, now)) {
-    return "Today";
-  } else if (isSameDay(date, yesterday)) {
-    return "Yesterday";
-  } else {
-    return format(date, "MMMM d, yyyy");
-  }
+  if (isToday(date)) return "Today";
+  if (isYesterday(date)) return "Yesterday";
+  return format(date, "MMMM d, yyyy");
 };
 
 export const groupMessagesWithTimestamps = (
@@ -57,8 +55,10 @@ export const groupMessagesWithTimestamps = (
 
   const grouped: MessageGroup[] = [];
   let lastDay: string | null = null;
+  let lastMessage: Message | null = null;
+  let lastMessageDate: Date | null = null;
 
-  sortedMessages.forEach((message) => {
+  sortedMessages.forEach((message, index) => {
     const messageDate = new Date(message.timestamp);
     const currentDay = format(messageDate, "yyyy-MM-dd");
 
@@ -74,14 +74,34 @@ export const groupMessagesWithTimestamps = (
       lastDay = currentDay;
     }
 
+    // Check if this message should be grouped with the previous one
+    const isGrouped = lastMessage && 
+                      lastMessageDate &&
+                      lastMessage.senderId === message.senderId &&
+                      isWithinGroupingThreshold(lastMessageDate, messageDate);
 
+    // Check if this is the start of a new group
+    const nextMessage = sortedMessages[index + 1];
+    const isGroupStart = !isGrouped && nextMessage && 
+                         nextMessage.senderId === message.senderId &&
+                         isWithinGroupingThreshold(messageDate, new Date(nextMessage.timestamp));
+
+    // Check if this is the end of a group
+    const isGroupEnd = isGrouped && (!nextMessage || 
+                       nextMessage.senderId !== message.senderId ||
+                       !isWithinGroupingThreshold(messageDate, new Date(nextMessage.timestamp)));
 
     grouped.push({
       type: "message",
       content: message.content,
       timestamp: message.timestamp,
       message,
+      isGroupStart: isGroupStart && !isGrouped,
+      isGroupEnd: isGroupEnd || (!isGrouped && !isGroupStart),
     });
+
+    lastMessage = message;
+    lastMessageDate = messageDate;
   });
 
   return grouped;

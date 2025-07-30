@@ -3,6 +3,7 @@ import MessageItem from './MessageItem';
 
 interface MessageGroupProps {
   group: MessageGroupType;
+  previousGroup?: MessageGroupType;
 }
 
 const MessageGroup = ({ group }: MessageGroupProps) => {
@@ -27,7 +28,7 @@ const MessageGroup = ({ group }: MessageGroupProps) => {
   }
 
   if (group.type === 'message' && group.message) {
-    return <MessageItem message={group.message} />;
+    return <MessageItem message={group.message} isGrouped={!group.isGroupEnd} />;
   }
 
   return null;
