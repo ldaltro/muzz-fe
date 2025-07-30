@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 export type Message = {
   id: number;
+  uuid?: string;
   senderId: number;
   recipientId: number;
   content: string;
@@ -9,6 +10,7 @@ export type Message = {
 };
 
 export type MessageInput = {
+  uuid?: string;
   senderId: number;
   recipientId: number;
   content: string;
@@ -19,12 +21,17 @@ type MessagesState = {
   createMessage: (message: MessageInput) => void;
 };
 
-const useMessagesStore = create<MessagesState>()((set, get) => ({
+const useMessagesStore = create<MessagesState>()((set) => ({
   messages: [],
   createMessage: (message: MessageInput) =>
     set((state) => {
+      if (message.uuid && state.messages.some(msg => msg.uuid === message.uuid)) {
+        return state;
+      }
+      
       const newMessage: Message = {
         id: state.messages.length + 1,
+        uuid: message.uuid,
         senderId: message.senderId,
         recipientId: message.recipientId,
         content: message.content,

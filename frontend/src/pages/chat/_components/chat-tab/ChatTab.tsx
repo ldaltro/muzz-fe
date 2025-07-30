@@ -18,12 +18,10 @@ const ChatTab = () => {
   }, [currentUser, currentRecipient]);
 
   const handleMessageReceived = useCallback(
-    (message: { senderId: number; recipientId: number; content: string }) => {
-      if (message.senderId !== currentUser.id) {
-        createMessage(message);
-      }
+    (message: { uuid?: string; senderId: number; recipientId: number; content: string }) => {
+      createMessage(message);
     },
-    [currentUser.id, createMessage]
+    [createMessage]
   );
 
   const { isConnected, sendMessage } = useChatSocket(
@@ -42,7 +40,6 @@ const ChatTab = () => {
       timestamp: new Date().toISOString(),
     };
 
-    createMessage(newMessage);
     sendMessage(newMessage);
     setCurrentMessage("");
   };

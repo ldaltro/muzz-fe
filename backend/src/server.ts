@@ -3,6 +3,8 @@ import http from "http";
 import { Server, Socket } from "socket.io";
 import cors from "cors";
 import bodyParser from "body-parser";
+import { v4 as uuidv4 } from "uuid";
+import { SocketMessage } from "./types";
 
 const app = express();
 const server = http.createServer(app);
@@ -14,24 +16,24 @@ app.use(cors({ origin: "*" }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Listen for new connections
 io.on("connection", (socket: Socket) => {
   console.log(`User Connected: ${socket.id}`);
 
-  // Event to join a specific room for a 1-on-1 chat
   socket.on("join_room", (room: string) => {
     socket.join(room);
     console.log(`User with ID: ${socket.id} joined room: ${room}`);
   });
 
-  // Event to send a message to a specific room
-  socket.on("send_message", (data: { room: string; message: string }) => {
-    // Emit the message only to the clients in the specified room
-    io.to(data.room).emit("receive_message", data);
-    console.log(`Message sent to room ${data.room}: ${data.message}`);
+  socket.on("send_message", (data: SocketMessage) => {
+    const messageWithUuid = {
+      ...data.message,
+      uuid: uuidv4()
+    };
+    
+    io.to(data.room).emit("receive_message", messageWithUuid);
+    console.log(`Message sent to room ${data.room}:`, messageWithUuid);
   });
 
-  // Handle disconnection
   socket.on("disconnect", () => {
     console.log("User Disconnected", socket.id);
   });

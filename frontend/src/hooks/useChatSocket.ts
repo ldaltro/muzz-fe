@@ -2,10 +2,11 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 
 interface ChatMessage {
+  uuid?: string;
   senderId: number;
   recipientId: number;
   content: string;
-  [key: string]: any;
+  timestamp?: string;
 }
 
 export const useChatSocket = (
@@ -36,13 +37,10 @@ export const useChatSocket = (
       setIsConnected(false);
     });
 
-    newSocket.on(
-      "receive_message",
-      (data: { room: string; message: ChatMessage }) => {
-        console.log("Message received in room:", data.room);
-        handleMessageReceived(data.message);
-      }
-    );
+    newSocket.on("receive_message", (message: ChatMessage) => {
+      console.log("Message received:", message);
+      handleMessageReceived(message);
+    });
 
     return () => {
       console.log("Disconnecting socket...");
