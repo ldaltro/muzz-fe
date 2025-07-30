@@ -2,8 +2,9 @@ import { useState, useMemo, useCallback } from "react";
 
 import useMessagesStore from "@/store/messages.store.ts";
 import useUserStore from "@/store/user.store.ts";
-import MessageItem from "@/pages/chat/_components/chat-tab/_components/message/MessageItem.tsx";
+import MessageGroup from "@/pages/chat/_components/chat-tab/_components/message/MessageGroup.tsx";
 import { useChatSocket } from "@/hooks/useChatSocket.ts";
+import { groupMessagesWithTimestamps } from "@/utils/messageGrouping";
 
 const ChatTab = () => {
   const [currentMessage, setCurrentMessage] = useState("");
@@ -44,13 +45,22 @@ const ChatTab = () => {
     setCurrentMessage("");
   };
 
+  const groupedMessages = useMemo(() => {
+    const currentMessages = messages.filter(
+      (msg) =>
+        (msg.senderId === currentUser?.id && msg.recipientId === currentRecipient?.id) ||
+        (msg.senderId === currentRecipient?.id && msg.recipientId === currentUser?.id)
+    );
+    return groupMessagesWithTimestamps(currentMessages);
+  }, [messages, currentUser, currentRecipient]);
+
   return (
     <div className="flex-1 flex flex-col">
       <div className="flex-1 flex flex-col p-[5px] overflow-auto max-h-[490px]">
         <div className="mt-auto">
           <div className="flex flex-col">
-            {messages.map((message) => (
-              <MessageItem key={message.id || message.timestamp} message={message} />
+            {groupedMessages.map((group, index) => (
+              <MessageGroup key={index} group={group} />
             ))}
           </div>
         </div>
