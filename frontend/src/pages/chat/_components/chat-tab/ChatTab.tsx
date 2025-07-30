@@ -19,7 +19,12 @@ const ChatTab = () => {
   }, [currentUser, currentRecipient]);
 
   const handleMessageReceived = useCallback(
-    (message: { uuid?: string; senderId: number; recipientId: number; content: string }) => {
+    (message: {
+      uuid?: string;
+      senderId: number;
+      recipientId: number;
+      content: string;
+    }) => {
       createMessage(message);
     },
     [createMessage]
@@ -48,15 +53,17 @@ const ChatTab = () => {
   const groupedMessages = useMemo(() => {
     const currentMessages = messages.filter(
       (msg) =>
-        (msg.senderId === currentUser?.id && msg.recipientId === currentRecipient?.id) ||
-        (msg.senderId === currentRecipient?.id && msg.recipientId === currentUser?.id)
+        (msg.senderId === currentUser?.id &&
+          msg.recipientId === currentRecipient?.id) ||
+        (msg.senderId === currentRecipient?.id &&
+          msg.recipientId === currentUser?.id)
     );
     return groupMessagesWithTimestamps(currentMessages);
   }, [messages, currentUser, currentRecipient]);
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="flex-1 flex flex-col p-[5px] overflow-auto max-h-[490px]">
+    <div className="flex flex-col flex-1">
+      <div className="flex-1 flex flex-col p-[5px] overflow-auto">
         <div className="mt-auto">
           <div className="flex flex-col">
             {groupedMessages.map((group, index) => (
