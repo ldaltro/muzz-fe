@@ -8,9 +8,13 @@ import { useChatSocket } from "@/hooks/useChatSocket";
 
 import type { User } from "@/store/user.store";
 import type { Message } from "@/store/messages.store";
+import { TEST_IDS } from "@/test-ids";
 
 const mockWebSocketState = {
   isConnected: true,
+  connectionState: 'connected' as const,
+  reconnectAttempts: 0,
+  lastError: null,
   sendMessage: vi.fn(),
 };
 
@@ -85,7 +89,8 @@ const renderChat = (userOverrides = {}, msgOverrides = {}) => {
       selector({ ...defaultMessageStore, ...msgOverrides })
     );
   }
-  return render(<ChatTab />);
+  const result = render(<ChatTab />);
+  return result;
 };
 
 describe("ChatTab", () => {
@@ -103,9 +108,12 @@ describe("ChatTab", () => {
     );
     
     mockWebSocketState.isConnected = true;
+    mockWebSocketState.connectionState = 'connected';
+    mockWebSocketState.reconnectAttempts = 0;
+    mockWebSocketState.lastError = null;
     mockWebSocketState.sendMessage.mockReset();
     
-        mockUseChatSocket.mockReturnValue(mockWebSocketState);
+    mockUseChatSocket.mockReturnValue(mockWebSocketState);
     defaultMessageStore.setMessages.mockClear();
   });
 
@@ -143,6 +151,9 @@ describe("ChatTab", () => {
     it("shows disconnected state with connecting placeholder", () => {
       mockUseChatSocket.mockReturnValue({
         isConnected: false,
+        connectionState: 'connecting',
+        reconnectAttempts: 0,
+        lastError: null,
         sendMessage: mockWebSocketState.sendMessage,
       });
 
@@ -209,6 +220,147 @@ describe("ChatTab", () => {
       expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
       expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[0]);
       expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[1]);
+    });
+  });
+
+  describe("Connection State UI", () => {
+    it("shows connection indicator for connected state", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: true,
+        connectionState: 'connected',
+        reconnectAttempts: 0,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByPlaceholderText("Message Bob")).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_IDS.CONNECTION_INDICATOR)).toBeInTheDocument();
+      expect(screen.getByTestId(TEST_IDS.CONNECTION_INDICATOR)).toHaveClass('bg-green-500');
+    });
+
+    it("shows reconnecting state with attempt count", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'reconnecting',
+        reconnectAttempts: 3,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByText("Reconnecting... (attempt 3)")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Reconnecting... (attempt 3)")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeDisabled();
+      const statusContainer = screen.getByText("Reconnecting... (attempt 3)").closest("div");
+      expect(statusContainer?.querySelector(`[data-testid="${TEST_IDS.CONNECTION_INDICATOR}"]`)).toHaveClass("bg-yellow-500");
+    });
+
+    it("shows error state with error message", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'error',
+        reconnectAttempts: 0,
+        lastError: 'Connection timeout',
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByText("Connection timeout")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Connection timeout")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeDisabled();
+      const statusContainer2 = screen.getByText("Connection timeout").closest("div");
+      expect(statusContainer2?.querySelector(`[data-testid="${TEST_IDS.CONNECTION_INDICATOR}"]`)).toHaveClass("bg-red-500");
+    });
+
+    it("shows disconnected state", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'disconnected',
+        reconnectAttempts: 0,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByPlaceholderText("Disconnected")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeDisabled();
+      expect(screen.getByTestId(TEST_IDS.CONNECTION_INDICATOR)).toHaveClass('bg-red-500');
+    });
+
+    it("shows error banner only for error and reconnecting states", () => {
+      // First test reconnecting state shows banner
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'reconnecting',
+        reconnectAttempts: 2,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      const { rerender } = renderChat();
+      expect(screen.getByText("Reconnecting... (attempt 2)")).toBeInTheDocument();
+
+      // Test error state shows banner
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'error',
+        reconnectAttempts: 0,
+        lastError: 'Network error',
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      rerender(<ChatTab />);
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+
+      // Test connected state doesn't show banner
+      mockUseChatSocket.mockReturnValue({
+        isConnected: true,
+        connectionState: 'connected',
+        reconnectAttempts: 0,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      rerender(<ChatTab />);
+      expect(screen.queryByText("Network error")).not.toBeInTheDocument();
+      expect(screen.queryByText("Reconnecting...")).not.toBeInTheDocument();
+    });
+
+    it("shows connecting state without attempt count", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'connecting',
+        reconnectAttempts: 0,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByPlaceholderText("Connecting...")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeDisabled();
+      expect(screen.getByTestId(TEST_IDS.CONNECTION_INDICATOR)).toHaveClass('bg-yellow-500');
+    });
+
+    it("shows reconnecting state without attempt count when attempts is 0", () => {
+      mockUseChatSocket.mockReturnValue({
+        isConnected: false,
+        connectionState: 'reconnecting',
+        reconnectAttempts: 0,
+        lastError: null,
+        sendMessage: mockWebSocketState.sendMessage,
+      });
+
+      renderChat();
+
+      expect(screen.getByText("Reconnecting...")).toBeInTheDocument();
+      expect(screen.getByPlaceholderText("Reconnecting...")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeDisabled();
     });
   });
 
