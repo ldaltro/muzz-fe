@@ -225,7 +225,7 @@ describe('useChatSocket', () => {
         reconnection: true,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
-        maxReconnectionAttempts: 5,
+        reconnectionAttempts: 5,
         timeout: 20000,
       });
     });

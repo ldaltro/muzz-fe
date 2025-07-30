@@ -43,4 +43,29 @@ describe('groupMessagesWithTimestamps', () => {
     expect(grouped[0].type).toBe('timestamp'); // Today 10:00 AM
     expect(grouped[1].type).toBe('message');   // Hello
   });
+
+  it('should handle >1 hour same-day gap boundary correctly', () => {
+    const messages = [
+      createMessage('First message', '2025-07-30T10:00:00Z', 1),
+      createMessage('Second message', '2025-07-30T11:01:00Z', 1), // 1 hour 1 minute later
+      createMessage('Third message', '2025-07-30T12:30:00Z', 1),  // 1.5 hours later
+    ];
+
+    const grouped = groupMessagesWithTimestamps(messages);
+
+    // We should have:
+    // - Timestamp for 10:00 AM
+    // - First message
+    // - Timestamp for 11:01 AM (1+ hour gap)
+    // - Second message  
+    // - Timestamp for 12:30 PM (1+ hour gap)
+    // - Third message
+    expect(grouped).toHaveLength(6);
+    expect(grouped[0].type).toBe('timestamp'); // Today 10:00 AM
+    expect(grouped[1].type).toBe('message');   // First message
+    expect(grouped[2].type).toBe('timestamp'); // Today 11:01 AM
+    expect(grouped[3].type).toBe('message');   // Second message
+    expect(grouped[4].type).toBe('timestamp'); // Today 12:30 PM
+    expect(grouped[5].type).toBe('message');   // Third message
+  });
 });

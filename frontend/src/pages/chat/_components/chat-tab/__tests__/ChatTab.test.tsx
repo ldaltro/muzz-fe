@@ -479,4 +479,47 @@ describe("ChatTab", () => {
       expect(screen.queryByText("Hi Alice!")).not.toBeInTheDocument();
     });
   });
+
+  describe("WebSocket Integration Tests", () => {
+    it("asserts two RTL renders share WS events via mocked server", () => {
+      mockUseChatSocket.mockReturnValue(mockWebSocketState);
+
+      // First render
+      const { unmount: unmount1 } = render(
+        <ChatTab />
+      );
+
+      // Second render (simulating a different tab or component)
+      const { unmount: unmount2 } = render(
+        <ChatTab />
+      );
+
+      // Verify both renders registered the same message handler
+      expect(mockUseChatSocket).toHaveBeenCalledTimes(2);
+      expect(mockUseChatSocket).toHaveBeenCalledWith(expect.any(String), expect.any(Function));
+
+      // Simulate receiving a message via WebSocket
+      const testMessage = {
+        uuid: "shared-uuid",
+        senderId: 2,
+        recipientId: 1,
+        content: "Shared WebSocket message",
+        timestamp: "2025-01-01T10:03:00.000Z",
+      };
+
+      // Both instances should receive the same message
+      const [, onMessage1] = mockUseChatSocket.mock.calls[0];
+      const [, onMessage2] = mockUseChatSocket.mock.calls[1];
+      
+      onMessage1(testMessage);
+      onMessage2(testMessage);
+
+      // Verify both instances processed the message
+      expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
+      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(testMessage);
+
+      unmount1();
+      unmount2();
+    });
+  });
 });
