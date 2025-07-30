@@ -2,24 +2,24 @@ import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ChatTab from "../ChatTab";
-import useUserStore from "../../../../../store/user.store";
-import useMessagesStore from "../../../../../store/messages.store";
-import { useChatSocket } from "../../../../../hooks/useChatSocket";
+import useUserStore from "@/store/user.store";
+import useMessagesStore from "@/store/messages.store";
+import { useChatSocket } from "@/hooks/useChatSocket";
 
-import type { User } from "../../../../../store/user.store";
-import type { Message } from "../../../../../store/messages.store";
+import type { User } from "@/store/user.store";
+import type { Message } from "@/store/messages.store";
 
 const mockWebSocketState = {
   isConnected: true,
   sendMessage: vi.fn(),
 };
 
-vi.mock("../../../../../hooks/useChatSocket", () => ({
+vi.mock("@/hooks/useChatSocket", () => ({
   useChatSocket: vi.fn(() => mockWebSocketState),
 }));
 
-vi.mock("../../../../../store/user.store");
-vi.mock("../../../../../store/messages.store");
+vi.mock("@/store/user.store");
+vi.mock("@/store/messages.store");
 
 const mockUseUserStore = vi.mocked(useUserStore);
 const mockUseMessagesStore = vi.mocked(useMessagesStore);
@@ -74,7 +74,6 @@ let defaultMessageStore = createDefaultMessageStore();
 let user: ReturnType<typeof userEvent.setup>;
 
 const renderChat = (userOverrides = {}, msgOverrides = {}) => {
-  // Override mocks only if custom values are provided
   if (Object.keys(userOverrides).length > 0) {
     mockUseUserStore.mockImplementation((selector) =>
       selector({ ...defaultUserStore, ...userOverrides })

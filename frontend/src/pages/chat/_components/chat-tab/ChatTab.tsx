@@ -1,9 +1,9 @@
 import { useState, useMemo, useCallback } from "react";
 
-import useMessagesStore from "../../../../store/messages.store.ts";
-import useUserStore from "../../../../store/user.store.ts";
-import MessageItem from "./_components/message/MessageItem.tsx";
-import { useChatSocket } from "../../../../hooks/useChatSocket.ts";
+import useMessagesStore from "@/store/messages.store.ts";
+import useUserStore from "@/store/user.store.ts";
+import MessageItem from "@/pages/chat/_components/chat-tab/_components/message/MessageItem.tsx";
+import { useChatSocket } from "@/hooks/useChatSocket.ts";
 
 const ChatTab = () => {
   const [currentMessage, setCurrentMessage] = useState("");
@@ -48,11 +48,11 @@ const ChatTab = () => {
     <div className="flex-1 flex flex-col">
       <div className="flex-1 flex flex-col p-[5px] overflow-auto max-h-[490px]">
         <div className="mt-auto">
-          {messages.map((message) => (
-            <div key={message.id || message.timestamp}>
-              <MessageItem message={message} />
-            </div>
-          ))}
+          <div className="flex flex-col">
+            {messages.map((message) => (
+              <MessageItem key={message.id || message.timestamp} message={message} />
+            ))}
+          </div>
         </div>
       </div>
       <div className="p-[20px] px-[10px]">
