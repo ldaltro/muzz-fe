@@ -6,6 +6,67 @@ Your task is to take ownership of this project, refactor and improve the code, f
 
 Most of your time will be spent working in the `frontend/src/pages/chat` directory, which contains the core chat functionality of the application. This includes the chat interface, message handling, and user interactions.
 
+## 📋 Recent Architectural Improvements
+
+### 🔌 WebSocket Chat Implementation
+- **Real-time messaging** with Socket.IO for bidirectional communication
+- **Optimistic UI updates** that reflect changes immediately while syncing with server
+- **Automatic reconnection** handling with exponential backoff
+- **Message grouping** by timestamp for improved readability
+- **Scroll restoration** maintaining user position during message loading
+
+### 🧪 Comprehensive Test Coverage
+- **Unit tests** for all critical chat functionality
+- **Integration tests** for WebSocket event handling
+- **Mock implementations** for external dependencies (Socket.IO, API calls)
+- **React Testing Library** for component interaction testing
+- **Custom test utilities** for consistent test setup and teardown
+
+### 🔄 React Query Integration
+- **Server state management** with automatic caching and synchronization
+- **Infinite scrolling** for message history with efficient pagination
+- **Background refetching** keeping data fresh without user intervention
+- **Optimistic updates** providing instant feedback during message operations
+- **Error boundaries** with graceful fallbacks and retry mechanisms
+
+### ⚙️ Environment Configuration
+- **Environment-based API URLs** replacing hard-coded endpoints
+- **CORS configuration** supporting multiple deployment environments
+- **Development/production parity** ensuring consistent behavior across environments
+- **Secure credential handling** for cross-origin requests
+
+### 📊 Key Architectural Decisions
+
+#### State Management Strategy
+- **React Query for server state**: We use TanStack Query to efficiently manage messages, rooms, and user data. It's a powerful tool that simplifies handling server state.
+- **Zustand for client state**: For things like UI preferences and connection status, Zustand is our go-to. It's lightweight and perfect for managing ephemeral data.
+- **Trade-off**: While we've simplified global state management, React Query gives us robust server state handling.
+
+#### Message Handling Architecture
+- **Optimistic updates**: Our UI reflects changes instantly, even before the server confirms them. This keeps things snappy and responsive.
+- **Conflict resolution**: By letting the server decide the final timestamp, we avoid message ordering issues.
+- **Performance optimization**: We group messages efficiently and use React.memo to keep rendering fast.
+- **Memory management**: Old messages are cleaned up automatically, with settings you can tweak to suit your needs.
+
+#### Testing Philosophy
+- **Behavior-driven tests**: We focus on how users interact with the app, not just the code itself.
+- **Mock-first approach**: By isolating unit tests with controlled dependencies, we ensure reliability and consistency.
+- **Integration boundaries**: Comprehensive WebSocket testing with real event flows
+- **Visual regression**: Component snapshot testing for UI consistency
+
+## 🔮 Suggested Next Steps & Improvements
+
+### Security Hardening
+- Implement rate limiting on message-send endpoints to prevent spam attacks.
+- Add CSRF protection and secure headers using Helmet.
+- Use JWT authentication with short-lived access tokens and a refresh token flow.
+
+### Code Quality and Testing
+- Integrate ESLint and Prettier to enforce code style and quality.
+- Set up pre-commit hooks with Husky to ensure code quality before commits.
+- Increase unit test coverage to over 90% to ensure reliability and stability.
+- Add shared types between frontend and backend 
+
 ## 📋 Prerequisites
 
 - Node.js (v18+ recommended)
