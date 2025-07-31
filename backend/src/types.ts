@@ -1,9 +1,9 @@
 export interface ChatMessage {
-  uuid?: string;
+  uuid: string;
   senderId: number;
   recipientId: number;
   content: string;
-  timestamp?: string;
+  createdAt: number;
 }
 
 export interface SocketMessage {

@@ -1,4 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInView } from "react-intersection-observer";
 
 import useMessagesStore from "@/store/messages.store";
 
@@ -9,10 +11,14 @@ import { groupMessagesWithTimestamps } from "@/utils/messageGrouping";
 import TestDataCheckbox from "./_components/TestDataCheckbox";
 import { sampleMessages } from "./_utils/sample-data";
 import { TEST_IDS } from "@/test-ids";
+import { fetchMessages } from "@/api/chat";
 
 const ChatTab = () => {
   const [currentMessage, setCurrentMessage] = useState("");
   const [useTestData, setUseTestData] = useState(false);
+
+  const queryClient = useQueryClient();
+  const { ref, inView } = useInView();
 
   const currentUser = useUserStore((state) => state.currentUser);
   const currentRecipient = useUserStore((state) => state.currentRecipient);
@@ -33,14 +39,47 @@ const ChatTab = () => {
     return [currentUser.id, currentRecipient.id].sort().join("-");
   }, [currentUser, currentRecipient]);
 
-  const handleMessageReceived = useCallback((message: {
-    uuid?: string;
-    senderId: number;
-    recipientId: number;
-    content: string;
-  }) => {
-    createMessage(message);
-  }, [createMessage]);
+  const {
+    data: infiniteData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['chat', roomId],
+    queryFn: ({ pageParam }) =>
+      fetchMessages({ room: roomId!, before: pageParam ?? Date.now(), limit: 20 }),
+    initialPageParam: Date.now(),
+    enabled: !!roomId && !useTestData,
+    getNextPageParam: (lastPage: any[]) =>
+      lastPage.length ? lastPage[lastPage.length - 1].createdAt : undefined,
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 10,
+  });
+
+  const handleMessageReceived = useCallback(
+    (message: {
+      uuid?: string;
+      senderId: number;
+      recipientId: number;
+      content: string;
+    }) => {
+      createMessage(message);
+      queryClient.setQueryData(['chat', roomId], (old: any) => {
+        if (!old) return old;
+        const newMessage = { ...message, createdAt: Date.now() };
+        return {
+          ...old,
+          pages: [
+            [newMessage, ...(old.pages[0] || [])],
+            ...old.pages.slice(1),
+          ],
+        };
+      });
+    },
+    [createMessage, queryClient, roomId]
+  );
+
+
 
   const { isConnected, connectionState, reconnectAttempts, lastError, sendMessage } = useChatSocket(
     roomId,
@@ -63,17 +102,30 @@ const ChatTab = () => {
   };
 
   const groupedMessages = useMemo(() => {
-    const currentMessages = useTestData
-      ? sampleMessages
-      : messages.filter(
-          (msg) =>
-            (msg.senderId === currentUser?.id &&
-              msg.recipientId === currentRecipient?.id) ||
-            (msg.senderId === currentRecipient?.id &&
-              msg.recipientId === currentUser?.id)
-        );
-    return groupMessagesWithTimestamps(currentMessages);
-  }, [messages, currentUser, currentRecipient, useTestData]);
+    if (useTestData) {
+      return groupMessagesWithTimestamps(messages);
+    }
+    
+    // When using real data, use messages from infiniteQuery
+    const allMessages = (infiniteData?.pages.flat() || []) as any[];
+    
+    // Add any local messages that aren't already in the infinite query data
+    const localMessagesNotInQuery = messages.filter(localMsg => 
+      !allMessages.some(apiMsg => 
+        (apiMsg.uuid && apiMsg.uuid === localMsg.uuid) || 
+        (apiMsg.id && apiMsg.id === localMsg.id)
+      )
+    );
+    
+    return groupMessagesWithTimestamps([...allMessages, ...localMessagesNotInQuery]);
+  }, [infiniteData, messages, useTestData]);
+
+  useEffect(() => {
+    if (inView && hasNextPage) {
+      fetchNextPage();
+    }
+  }, [inView, hasNextPage, fetchNextPage]);
+
 
   const getConnectionStatus = () => {
     switch (connectionState) {
@@ -112,14 +164,13 @@ const ChatTab = () => {
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-[5px]">
         <div className="flex flex-col">
-          {groupedMessages.map((group) => {
-            const key = group.type === 'timestamp' 
-              ? `timestamp-${group.timestamp}` 
-              : `message-${group.message?.uuid || group.message?.id}`;
-            return (
-              <MessageGroup key={key} group={group} />
-            );
-          })}
+          {groupedMessages.map((group, index) => (
+            <MessageGroup key={`${group.type}-${group.timestamp}-${index}`} group={group} />
+          ))}
+          <div ref={ref} className="h-1" />
+          {isFetchingNextPage && (
+            <div className="text-center text-sm text-gray-500">Loading older messages...</div>
+          )}
         </div>
       </div>
       <div className="p-[20px] px-[10px] space-y-2 border-t border-gray-200">

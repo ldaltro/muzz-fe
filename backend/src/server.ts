@@ -4,7 +4,7 @@ import { Server, Socket } from "socket.io";
 import cors from "cors";
 import bodyParser from "body-parser";
 import { v4 as uuidv4 } from "uuid";
-import { SocketMessage } from "./types";
+import { SocketMessage, ChatMessage } from "./types";
 
 const app = express();
 const server = http.createServer(app);
@@ -25,18 +25,42 @@ io.on("connection", (socket: Socket) => {
   });
 
   socket.on("send_message", (data: SocketMessage) => {
-    const messageWithUuid = {
+    const message: ChatMessage = {
       ...data.message,
-      uuid: uuidv4()
+      uuid: uuidv4(),
+      createdAt: Date.now()
     };
-    
-    io.to(data.room).emit("receive_message", messageWithUuid);
-    console.log(`Message sent to room ${data.room}:`, messageWithUuid);
+
+    // Persist in memory
+    const arr = roomMessages[data.room] ?? [];
+    arr.push(message);
+    if (arr.length > MAX_HISTORY) arr.shift(); // drop oldest
+    roomMessages[data.room] = arr;
+
+    io.to(data.room).emit("receive_message", message);
+    console.log(`Message sent to room ${data.room}:`, message);
   });
 
   socket.on("disconnect", () => {
     console.log("User Disconnected", socket.id);
   });
+});
+
+// In-memory message store
+const roomMessages: Record<string, ChatMessage[]> = {};
+const MAX_HISTORY = 500;
+
+app.get("/rooms/:room/messages", (req, res) => {
+  const { room } = req.params;
+  const before = Number(req.query.before) || Date.now();
+  const limit = Math.min(Number(req.query.limit) || 20, 100);
+
+  const history = (roomMessages[room] || [])
+    .filter(m => m.createdAt < before)
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, limit);
+
+  res.json(history);
 });
 
 // Start the server on port 3001
