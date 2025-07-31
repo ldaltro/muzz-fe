@@ -1,7 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import MessageGroup from './MessageGroup';
 import type { MessageGroup as MessageGroupType } from '@/utils/messageGrouping';
+
+vi.mock('@/store/user.store');
+
+import useUserStore from '@/store/user.store';
 
 describe('MessageGroup', () => {
   const mockMessage = {
@@ -11,6 +15,14 @@ describe('MessageGroup', () => {
     content: 'Hello World',
     timestamp: '2025-07-30T10:00:00Z',
   };
+
+  beforeEach(() => {
+    vi.mocked(useUserStore).mockImplementation((selector: any) =>
+      selector({
+        currentUser: { id: 1, name: 'Alice', profile: 'https://example.com/alice.jpg' },
+      })
+    );
+  });
 
   it('should render timestamp heading with day and time', () => {
     const timestampGroup: MessageGroupType = {

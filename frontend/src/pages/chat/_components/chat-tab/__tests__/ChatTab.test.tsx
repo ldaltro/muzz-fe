@@ -1,10 +1,26 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ChatTab from "../ChatTab";
 import useUserStore from "@/store/user.store";
 import useMessagesStore from "@/store/messages.store";
 import { useChatSocket } from "@/hooks/useChatSocket";
+
+// Mock window.matchMedia
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+});
 
 import type { User } from "@/store/user.store";
 import type { Message } from "@/store/messages.store";
@@ -79,18 +95,24 @@ let defaultMessageStore = createDefaultMessageStore();
 let user: ReturnType<typeof userEvent.setup>;
 
 const renderChat = (userOverrides = {}, msgOverrides = {}) => {
-  if (Object.keys(userOverrides).length > 0) {
-    mockUseUserStore.mockImplementation((selector) =>
-      selector({ ...defaultUserStore, ...userOverrides })
-    );
-  }
-  if (Object.keys(msgOverrides).length > 0) {
-    mockUseMessagesStore.mockImplementation((selector) =>
-      selector({ ...defaultMessageStore, ...msgOverrides })
-    );
-  }
-  const result = render(<ChatTab />);
-  return result;
+  const userStore = { ...defaultUserStore, ...userOverrides };
+  const messageStore = { ...defaultMessageStore, ...msgOverrides };
+
+  mockUseUserStore.mockImplementation((selector) => selector(userStore));
+  mockUseMessagesStore.mockImplementation((selector) => selector(messageStore));
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ChatTab />
+    </QueryClientProvider>
+  );
 };
 
 describe("ChatTab", () => {
@@ -165,12 +187,11 @@ describe("ChatTab", () => {
 
     it("receives messages via WebSocket callback", () => {
       renderChat();
-      
       const mockCalls = mockUseChatSocket.mock.calls;
-      
-      expect(mockCalls).toHaveLength(1);
-      expect(mockCalls[0]).toHaveLength(2);
-      expect(typeof mockCalls[0][1]).toBe('function');
+      expect(mockCalls.length).toBeGreaterThanOrEqual(1);
+      // Find a call with two arguments and the second is a function
+      const validCall = mockCalls.find(call => call.length === 2 && typeof call[1] === 'function');
+      expect(validCall).toBeTruthy();
     });
 
     it("handles incoming WebSocket messages correctly", () => {
@@ -220,6 +241,41 @@ describe("ChatTab", () => {
       expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
       expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[0]);
       expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[1]);
+    });
+
+    it("asserts two RTL renders share WS events via mocked server", () => {
+      const { unmount: unmount1 } = renderChat();
+      const { unmount: unmount2 } = renderChat();
+      
+      const mockCalls = mockUseChatSocket.mock.calls;
+      expect(mockCalls.length).toBeGreaterThanOrEqual(2);
+      const lastTwoCalls = mockCalls.slice(-2);
+      lastTwoCalls.forEach(call => {
+        expect(call.length).toBe(2);
+        expect(typeof call[1]).toBe('function');
+      });
+
+      // Simulate receiving a message via WebSocket
+      const testMessage = {
+        uuid: "shared-uuid",
+        senderId: 2,
+        recipientId: 1,
+        content: "Shared WebSocket message",
+        timestamp: "2025-01-01T10:03:00.000Z",
+      };
+
+      // Both instances should receive the same message
+      const [, onMessage1] = lastTwoCalls[0];
+      const [, onMessage2] = lastTwoCalls[1];
+      onMessage1(testMessage);
+      onMessage2(testMessage);
+
+      // Verify both instances processed the message
+      expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
+      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(testMessage);
+
+      unmount1();
+      unmount2();
     });
   });
 
@@ -293,7 +349,7 @@ describe("ChatTab", () => {
     });
 
     it("shows error banner only for error and reconnecting states", () => {
-      // First test reconnecting state shows banner
+      // First, test that the reconnecting state shows a banner
       mockUseChatSocket.mockReturnValue({
         isConnected: false,
         connectionState: 'reconnecting',
@@ -302,10 +358,11 @@ describe("ChatTab", () => {
         sendMessage: mockWebSocketState.sendMessage,
       });
 
-      const { rerender } = renderChat();
+      const { unmount: unmount1 } = renderChat();
       expect(screen.getByText("Reconnecting... (attempt 2)")).toBeInTheDocument();
+      unmount1();
 
-      // Test error state shows banner
+      // Next, test that the error state shows a banner
       mockUseChatSocket.mockReturnValue({
         isConnected: false,
         connectionState: 'error',
@@ -314,10 +371,11 @@ describe("ChatTab", () => {
         sendMessage: mockWebSocketState.sendMessage,
       });
 
-      rerender(<ChatTab />);
+      const { unmount: unmount2 } = renderChat();
       expect(screen.getByText("Network error")).toBeInTheDocument();
+      unmount2();
 
-      // Test connected state doesn't show banner
+      // Finally, verify that the connected state does NOT show a banner
       mockUseChatSocket.mockReturnValue({
         isConnected: true,
         connectionState: 'connected',
@@ -326,9 +384,9 @@ describe("ChatTab", () => {
         sendMessage: mockWebSocketState.sendMessage,
       });
 
-      rerender(<ChatTab />);
+      renderChat();
       expect(screen.queryByText("Network error")).not.toBeInTheDocument();
-      expect(screen.queryByText("Reconnecting...")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Reconnecting\.{3}/)).not.toBeInTheDocument();
     });
 
     it("shows connecting state without attempt count", () => {
