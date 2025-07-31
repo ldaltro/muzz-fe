@@ -2,8 +2,6 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 
-import useMessagesStore from "@/store/messages.store";
-
 import useUserStore from "@/store/user.store";
 import MessageGroup from "@/pages/chat/_components/chat-tab/_components/message/MessageGroup";
 import { useChatSocket } from "@/hooks/useChatSocket";
@@ -12,6 +10,7 @@ import TestDataCheckbox from "./_components/TestDataCheckbox";
 import { sampleMessages } from "./_utils/sample-data";
 import { TEST_IDS } from "@/test-ids";
 import { fetchMessages } from "@/api/chat";
+import type { ChatMessage } from "@/shared/types";
 
 const ChatTab = () => {
   const [currentMessage, setCurrentMessage] = useState("");
@@ -31,17 +30,6 @@ const ChatTab = () => {
 
   const currentUser = useUserStore((state) => state.currentUser);
   const currentRecipient = useUserStore((state) => state.currentRecipient);
-  const messages = useMessagesStore((state) => state.messages);
-  const createMessage = useMessagesStore((state) => state.createMessage);
-  const setMessages = useMessagesStore((state) => state.setMessages);
-
-  useEffect(() => {
-    if (useTestData) {
-      setMessages(sampleMessages);
-    } else {
-      setMessages([]);
-    }
-  }, [useTestData, setMessages]);
 
   const roomId = useMemo(() => {
     if (!currentUser || !currentRecipient) return null;
@@ -54,38 +42,59 @@ const ChatTab = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['chat', roomId],
-    queryFn: ({ pageParam }) =>
-      fetchMessages({ room: roomId!, before: pageParam ?? Date.now(), limit: 20 }),
+    queryKey: ['chat', roomId, useTestData],
+    queryFn: ({ pageParam }) => {
+      if (useTestData) {
+        return Promise.resolve(sampleMessages);
+      }
+      return fetchMessages({ room: roomId!, before: pageParam ?? Date.now(), limit: 20 });
+    },
     initialPageParam: Date.now(),
-    enabled: !!roomId && !useTestData,
-    getNextPageParam: (lastPage: any[]) =>
-      lastPage.length ? lastPage[lastPage.length - 1].createdAt : undefined,
+    enabled: !!roomId,
+    getNextPageParam: (lastPage: ChatMessage[]) => {
+      if (useTestData) return undefined;
+      const lastMessage = lastPage[lastPage.length - 1];
+      return lastPage.length ? new Date(lastMessage.timestamp || Date.now()).getTime() : undefined;
+    },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
   });
 
   const handleMessageReceived = useCallback(
-    (message: {
-      uuid?: string;
-      senderId: number;
-      recipientId: number;
-      content: string;
-    }) => {
-      createMessage(message);
-      queryClient.setQueryData(['chat', roomId], (old: any) => {
+    (message: ChatMessage) => {
+      if (useTestData) return;
+      
+      queryClient.setQueryData(['chat', roomId, useTestData], (old: { pages: ChatMessage[][] }) => {
         if (!old) return old;
-        const newMessage = { ...message, createdAt: Date.now() };
+
+        // Clone the pages array and the first page
+        const newPages = [...old.pages];
+        const first = [...(newPages[0] || [])];
+
+        // Find the existing message index
+        const idx = first.findIndex((m: ChatMessage & { isOptimistic?: boolean; uuid?: string }) =>
+          (m.uuid && m.uuid === message.uuid) ||
+          (m.isOptimistic && m.content === message.content && m.senderId === message.senderId)
+        );
+
+        if (idx >= 0) {
+          // Replace existing optimistic message
+          first[idx] = message;
+        } else {
+          // Prepend new message
+          first.unshift(message);
+        }
+
+        // Update the first page in pages array
+        newPages[0] = first;
+
         return {
           ...old,
-          pages: [
-            [newMessage, ...(old.pages[0] || [])],
-            ...old.pages.slice(1),
-          ],
+          pages: newPages,
         };
       });
     },
-    [createMessage, queryClient, roomId]
+    [queryClient, roomId, useTestData]
   );
 
 
@@ -97,37 +106,46 @@ const ChatTab = () => {
 
   const handleMessageSend = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentRecipient || !currentMessage.trim() || !isConnected) return;
+    if (!currentRecipient || !currentMessage.trim() || !isConnected || useTestData) return;
 
-    const newMessage = {
+    const messageId = crypto.randomUUID();
+    const newMessage: ChatMessage = {
+      uuid: messageId,
       senderId: currentUser.id,
       recipientId: currentRecipient.id,
       content: currentMessage.trim(),
       timestamp: new Date().toISOString(),
     };
 
+    queryClient.setQueryData(['chat', roomId, useTestData], (old: { pages: ChatMessage[][] }) => {
+      if (!old) return old;
+      const optimisticMessage: ChatMessage & { isOptimistic?: boolean } = { 
+        ...newMessage, 
+        isOptimistic: true 
+      };
+      return {
+        ...old,
+        pages: [
+          [optimisticMessage, ...(old.pages[0] || [])],
+          ...old.pages.slice(1),
+        ],
+      };
+    });
+
     sendMessage(newMessage);
     setCurrentMessage("");
   };
 
   const groupedMessages = useMemo(() => {
-    if (useTestData) {
-      return groupMessagesWithTimestamps(messages);
-    }
-    
-    // When using real data, use messages from infiniteQuery
-    const allMessages = (infiniteData?.pages.flat() || []) as any[];
-    
-    // Add any local messages that aren't already in the infinite query data
-    const localMessagesNotInQuery = messages.filter(localMsg => 
-      !allMessages.some(apiMsg => 
-        (apiMsg.uuid && apiMsg.uuid === localMsg.uuid) || 
-        (apiMsg.id && apiMsg.id === localMsg.id)
-      )
-    );
-    
-    return groupMessagesWithTimestamps([...allMessages, ...localMessagesNotInQuery]);
-  }, [infiniteData, messages, useTestData]);
+    const allMessages = (infiniteData?.pages.flat() || []) as ChatMessage[];
+    // Convert ChatMessage to Message format expected by groupMessagesWithTimestamps
+    const formattedMessages = allMessages.map((msg, index) => ({
+      ...msg,
+      id: index, // Generate a unique id for each message
+      timestamp: msg.timestamp || new Date().toISOString(),
+    }));
+    return groupMessagesWithTimestamps(formattedMessages);
+  }, [infiniteData]);
 
   // When the sentinel enters the viewport at the bottom AND there are more pages, fetch older messages
   useEffect(() => {

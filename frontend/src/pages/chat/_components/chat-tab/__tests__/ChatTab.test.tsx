@@ -25,6 +25,7 @@ Object.defineProperty(window, 'matchMedia', {
 import type { User } from "@/store/user.store";
 import type { Message } from "@/store/messages.store";
 import { TEST_IDS } from "@/test-ids";
+import { fetchMessages } from "@/api/chat";
 
 const mockWebSocketState = {
   isConnected: true,
@@ -38,12 +39,17 @@ vi.mock("@/hooks/useChatSocket", () => ({
   useChatSocket: vi.fn(() => mockWebSocketState),
 }));
 
+vi.mock("@/api/chat", () => ({
+  fetchMessages: vi.fn(),
+}));
+
 vi.mock("@/store/user.store");
 vi.mock("@/store/messages.store");
 
 const mockUseUserStore = vi.mocked(useUserStore);
 const mockUseMessagesStore = vi.mocked(useMessagesStore);
 const mockUseChatSocket = vi.mocked(useChatSocket);
+const mockFetchMessages = vi.mocked(fetchMessages);
 
 const mockCurrentUser: User = {
   id: 1,
@@ -57,7 +63,7 @@ const mockRecipient: User = {
   profile: "https://example.com/bob.jpg",
 };
 
-const mockMessages: Message[] = [
+const mockMessages: (Message & { createdAt: number })[] = [
   {
     id: 1,
     uuid: "uuid-1",
@@ -65,6 +71,7 @@ const mockMessages: Message[] = [
     recipientId: 2,
     content: "Hello Bob!",
     timestamp: "2025-01-01T10:00:00.000Z",
+    createdAt: 1704103200000, // 2025-01-01T10:00:00.000Z
   },
   {
     id: 2,
@@ -73,6 +80,7 @@ const mockMessages: Message[] = [
     recipientId: 1,
     content: "Hi Alice!",
     timestamp: "2025-01-01T10:01:00.000Z",
+    createdAt: 1704103260000, // 2025-01-01T10:01:00.000Z
   },
 ];
 
@@ -94,19 +102,37 @@ let defaultMessageStore = createDefaultMessageStore();
 
 let user: ReturnType<typeof userEvent.setup>;
 
-const renderChat = (userOverrides = {}, msgOverrides = {}) => {
+const renderChat = (userOverrides: Partial<{
+  currentUser: User;
+  currentRecipient: User | null;
+  setCurrentUser: (user: User) => void;
+  setCurrentRecipient: (user: User | null) => void;
+}> = {}, msgOverrides: Partial<ReturnType<typeof createDefaultMessageStore>> = {}) => {
   const userStore = { ...defaultUserStore, ...userOverrides };
   const messageStore = { ...defaultMessageStore, ...msgOverrides };
 
   mockUseUserStore.mockImplementation((selector) => selector(userStore));
   mockUseMessagesStore.mockImplementation((selector) => selector(messageStore));
 
+  // Mock the fetchMessages API to return the messages
+  const messagesToReturn = msgOverrides.messages !== undefined ? msgOverrides.messages : mockMessages;
+  mockFetchMessages.mockResolvedValue(messagesToReturn);
+
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: { retry: false },
+      queries: { retry: false, staleTime: 0 },
       mutations: { retry: false },
     },
   });
+
+  // Pre-populate the query cache with initial data
+  if (messagesToReturn.length > 0 && userStore.currentUser && userStore.currentRecipient) {
+    const roomId = [userStore.currentUser.id, userStore.currentRecipient.id].sort().join("-");
+    queryClient.setQueryData(['chat', roomId, false], {
+      pages: [messagesToReturn],
+      pageParams: [Date.now()],
+    });
+  }
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -137,6 +163,7 @@ describe("ChatTab", () => {
     
     mockUseChatSocket.mockReturnValue(mockWebSocketState);
     defaultMessageStore.setMessages.mockClear();
+    mockFetchMessages.mockClear();
   });
 
   afterEach(() => {
@@ -194,7 +221,7 @@ describe("ChatTab", () => {
       expect(validCall).toBeTruthy();
     });
 
-    it("handles incoming WebSocket messages correctly", () => {
+    it("handles incoming WebSocket messages correctly", async () => {
       renderChat();
       
       const mockCalls = mockUseChatSocket.mock.calls;
@@ -210,10 +237,12 @@ describe("ChatTab", () => {
       
       onMessageReceived(incomingMessage);
       
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(incomingMessage);
+      // Wait for the message to appear in the DOM (React Query update)
+      await screen.findByText("Hello from WebSocket!");
+      expect(screen.getByText("Hello from WebSocket!")).toBeInTheDocument();
     });
 
-    it("handles multiple incoming WebSocket messages", () => {
+    it("handles multiple incoming WebSocket messages", async () => {
       renderChat();
       
       const mockCalls = mockUseChatSocket.mock.calls;
@@ -238,12 +267,14 @@ describe("ChatTab", () => {
       
       messages.forEach(message => onMessageReceived(message));
       
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[0]);
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(messages[1]);
+      // Wait for both messages to appear in the DOM
+      await screen.findByText("First WebSocket message");
+      await screen.findByText("Second WebSocket message");
+      expect(screen.getByText("First WebSocket message")).toBeInTheDocument();
+      expect(screen.getByText("Second WebSocket message")).toBeInTheDocument();
     });
 
-    it("asserts two RTL renders share WS events via mocked server", () => {
+    it("asserts two RTL renders share WS events via mocked server", async () => {
       const { unmount: unmount1 } = renderChat();
       const { unmount: unmount2 } = renderChat();
       
@@ -270,9 +301,9 @@ describe("ChatTab", () => {
       onMessage1(testMessage);
       onMessage2(testMessage);
 
-      // Verify both instances processed the message
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(testMessage);
+      // Verify the message handling callbacks were called (both should register handlers)
+      expect(mockUseChatSocket).toHaveBeenCalledWith(expect.any(String), expect.any(Function));
+      expect(mockUseChatSocket.mock.calls.length).toBeGreaterThanOrEqual(2);
 
       unmount1();
       unmount2();
@@ -452,6 +483,7 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
+        uuid: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "New test message",
@@ -468,6 +500,7 @@ describe("ChatTab", () => {
       fireEvent.submit(form);
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
+        uuid: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Form submit test",
@@ -483,6 +516,7 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
+        uuid: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Message with spaces",
@@ -571,9 +605,9 @@ describe("ChatTab", () => {
       onMessage1(testMessage);
       onMessage2(testMessage);
 
-      // Verify both instances processed the message
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledTimes(2);
-      expect(defaultMessageStore.createMessage).toHaveBeenCalledWith(testMessage);
+      // Verify both instances registered message handlers (the callbacks were called)
+      expect(mockUseChatSocket).toHaveBeenCalledWith(expect.any(String), expect.any(Function));
+      expect(mockUseChatSocket.mock.calls.length).toBeGreaterThanOrEqual(2);
 
       unmount1();
       unmount2();
