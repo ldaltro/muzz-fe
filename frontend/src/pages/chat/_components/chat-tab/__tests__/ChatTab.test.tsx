@@ -63,23 +63,19 @@ const mockRecipient: User = {
   profile: "https://example.com/bob.jpg",
 };
 
-const mockMessages: (Message & { createdAt: number })[] = [
+const mockMessages: Message[] = [
   {
-    id: 1,
-    uuid: "uuid-1",
+    id: "uuid-1",
     senderId: 1,
     recipientId: 2,
     content: "Hello Bob!",
-    timestamp: "2025-01-01T10:00:00.000Z",
     createdAt: 1704103200000, // 2025-01-01T10:00:00.000Z
   },
   {
-    id: 2,
-    uuid: "uuid-2",
+    id: "uuid-2",
     senderId: 2,
     recipientId: 1,
     content: "Hi Alice!",
-    timestamp: "2025-01-01T10:01:00.000Z",
     createdAt: 1704103260000, // 2025-01-01T10:01:00.000Z
   },
 ];
@@ -483,11 +479,11 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        uuid: expect.any(String),
+        id: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "New test message",
-        timestamp: expect.any(String),
+        createdAt: expect.any(Number),
       });
     });
 
@@ -500,11 +496,11 @@ describe("ChatTab", () => {
       fireEvent.submit(form);
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        uuid: expect.any(String),
+        id: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Form submit test",
-        timestamp: expect.any(String),
+        createdAt: expect.any(Number),
       });
     });
 
@@ -516,11 +512,11 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        uuid: expect.any(String),
+        id: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Message with spaces",
-        timestamp: expect.any(String),
+        createdAt: expect.any(Number),
       });
     });
   });

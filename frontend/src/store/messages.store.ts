@@ -1,16 +1,15 @@
 import { create } from "zustand";
 
 export type Message = {
-  id: number;
-  uuid?: string;
+  id: string;
   senderId: number;
   recipientId: number;
   content: string;
-  timestamp: string;
+  createdAt: number;
 };
 
 export type MessageInput = {
-  uuid?: string;
+  id?: string;
   senderId: number;
   recipientId: number;
   content: string;
@@ -27,17 +26,16 @@ const useMessagesStore = create<MessagesState>((set) => ({
   setMessages: (messages: Message[]) => set({ messages }),
   createMessage: (message: MessageInput) =>
     set((state) => {
-      if (message.uuid && state.messages.some(msg => msg.uuid === message.uuid)) {
+      if (message.id && state.messages.some(msg => msg.id === message.id)) {
         return state;
       }
       
       const newMessage: Message = {
-        id: state.messages.length + 1,
-        uuid: message.uuid,
+        id: message.id || crypto.randomUUID(),
         senderId: message.senderId,
         recipientId: message.recipientId,
         content: message.content,
-        timestamp: new Date().toISOString(),
+        createdAt: Date.now(),
       };
       return { messages: [...state.messages, newMessage] };
     }),

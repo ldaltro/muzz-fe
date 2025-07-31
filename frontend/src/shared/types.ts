@@ -1,7 +1,7 @@
 export interface ChatMessage {
-  uuid?: string;
+  id?: string;
   senderId: number;
   recipientId: number;
   content: string;
-  timestamp?: string;
+  createdAt?: number;
 }

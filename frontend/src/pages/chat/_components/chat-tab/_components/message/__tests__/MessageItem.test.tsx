@@ -12,19 +12,19 @@ import useUserStore from '@/store/user.store';
 
 describe('MessageItem', () => {
   const myMessage: Message = {
-    id: 1,
+    id: '1',
     senderId: 1,
     recipientId: 2,
     content: 'Hello',
-    timestamp: new Date().toISOString(),
+    createdAt: Date.now(),
   };
 
   const otherMessage: Message = {
-    id: 2,
+    id: '2',
     senderId: 2,
     recipientId: 1,
     content: 'Hi there',
-    timestamp: new Date().toISOString(),
+    createdAt: Date.now(),
   };
 
   beforeEach(() => {

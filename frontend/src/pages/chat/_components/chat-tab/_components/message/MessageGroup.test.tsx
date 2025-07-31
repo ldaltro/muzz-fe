@@ -9,11 +9,11 @@ import useUserStore from '@/store/user.store';
 
 describe('MessageGroup', () => {
   const mockMessage = {
-    id: 1,
+    id: '1',
     senderId: 1,
     recipientId: 2,
     content: 'Hello World',
-    timestamp: '2025-07-30T10:00:00Z',
+    createdAt: new Date('2025-07-30T10:00:00Z').getTime(),
   };
 
   beforeEach(() => {

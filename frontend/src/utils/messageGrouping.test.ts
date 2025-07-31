@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { groupMessagesWithTimestamps } from './messageGrouping';
 
-const createMessage = (content: string, timestamp: string, id: number) => ({
+const createMessage = (content: string, createdAt: number, id: string) => ({
   id,
   content,
-  timestamp,
+  createdAt,
   senderId: 1,
   recipientId: 2,
 });
@@ -13,9 +13,9 @@ describe('groupMessagesWithTimestamps', () => {
 
   it('should group messages with timestamps', () => {
     const messages = [
-      createMessage('Hello', '2025-07-30T10:00:00Z', 1),
-      createMessage('Hi there', '2025-07-30T10:30:00Z', 2),
-      createMessage('How are you?', '2025-07-30T12:00:00Z', 3), // 2 hours later
+      createMessage('Hello', new Date('2025-07-30T10:00:00Z').getTime(), '1'),
+      createMessage('Hi there', new Date('2025-07-30T10:30:00Z').getTime(), '2'),
+      createMessage('How are you?', new Date('2025-07-30T12:00:00Z').getTime(), '3'), // 2 hours later
     ];
 
     const grouped = groupMessagesWithTimestamps(messages);
@@ -35,7 +35,7 @@ describe('groupMessagesWithTimestamps', () => {
   });
 
   it('should handle single message', () => {
-    const messages = [createMessage('Hello', '2025-07-30T10:00:00Z', 1)];
+    const messages = [createMessage('Hello', new Date('2025-07-30T10:00:00Z').getTime(), '1')];
     const grouped = groupMessagesWithTimestamps(messages);
 
     // Only one day heading with time for single message
@@ -46,9 +46,9 @@ describe('groupMessagesWithTimestamps', () => {
 
   it('should handle >1 hour same-day gap boundary correctly', () => {
     const messages = [
-      createMessage('First message', '2025-07-30T10:00:00Z', 1),
-      createMessage('Second message', '2025-07-30T11:01:00Z', 1), // 1 hour 1 minute later
-      createMessage('Third message', '2025-07-30T12:30:00Z', 1),  // 1.5 hours later
+      createMessage('First message', new Date('2025-07-30T10:00:00Z').getTime(), '1'),
+      createMessage('Second message', new Date('2025-07-30T11:01:00Z').getTime(), '2'), // 1 hour 1 minute later
+      createMessage('Third message', new Date('2025-07-30T12:30:00Z').getTime(), '3'),  // 1.5 hours later
     ];
 
     const grouped = groupMessagesWithTimestamps(messages);

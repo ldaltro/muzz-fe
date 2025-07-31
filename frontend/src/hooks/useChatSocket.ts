@@ -2,11 +2,11 @@ import { useEffect, useState, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 
 interface ChatMessage {
-  uuid?: string;
+  id?: string;
   senderId: number;
   recipientId: number;
   content: string;
-  timestamp?: string;
+  createdAt?: number;
 }
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';

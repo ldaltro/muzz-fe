@@ -7,12 +7,11 @@ import {
 } from "date-fns";
 
 export interface Message {
-  id: number;
-  uuid?: string;
+  id: string;
   senderId: number;
   recipientId: number;
   content: string;
-  timestamp: string;
+  createdAt: number;
 }
 
 export interface MessageGroup {
@@ -51,7 +50,7 @@ export const groupMessagesWithTimestamps = (
   }
 
   const sortedMessages = [...messages].sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    (a, b) => a.createdAt - b.createdAt
   );
 
   const grouped: MessageGroup[] = [];
@@ -60,7 +59,7 @@ export const groupMessagesWithTimestamps = (
   let lastMessageDate: Date | null = null;
 
   sortedMessages.forEach((message, index) => {
-    const messageDate = new Date(message.timestamp);
+    const messageDate = new Date(message.createdAt);
     const currentDay = format(messageDate, "yyyy-MM-dd");
 
     // Add timestamp heading if it's a new day OR more than 1 hour since last message
@@ -89,17 +88,17 @@ export const groupMessagesWithTimestamps = (
     const nextMessage = sortedMessages[index + 1];
     const isGroupStart = !isGrouped && nextMessage && 
                          nextMessage.senderId === message.senderId &&
-                         isWithinGroupingThreshold(messageDate, new Date(nextMessage.timestamp));
+                         isWithinGroupingThreshold(messageDate, new Date(nextMessage.createdAt));
 
     // Check if this is the end of a group
     const isGroupEnd = isGrouped && (!nextMessage || 
                        nextMessage.senderId !== message.senderId ||
-                       !isWithinGroupingThreshold(messageDate, new Date(nextMessage.timestamp)));
+                       !isWithinGroupingThreshold(messageDate, new Date(nextMessage.createdAt)));
 
     grouped.push({
       type: "message",
       content: message.content,
-      timestamp: message.timestamp,
+      timestamp: messageDate.toISOString(),
       message,
       isGroupStart: isGroupStart && !isGrouped,
       isGroupEnd: isGroupEnd || (!isGrouped && !isGroupStart),

@@ -27,7 +27,7 @@ io.on("connection", (socket: Socket) => {
   socket.on("send_message", (data: SocketMessage) => {
     const message: ChatMessage = {
       ...data.message,
-      uuid: uuidv4(),
+      id: uuidv4(),
       createdAt: Date.now()
     };
 

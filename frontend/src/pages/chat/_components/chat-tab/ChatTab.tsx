@@ -54,7 +54,7 @@ const ChatTab = () => {
     getNextPageParam: (lastPage: ChatMessage[]) => {
       if (useTestData) return undefined;
       const lastMessage = lastPage[lastPage.length - 1];
-      return lastPage.length ? new Date(lastMessage.timestamp || Date.now()).getTime() : undefined;
+      return lastPage.length ? (lastMessage.createdAt || Date.now()) : undefined;
     },
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
@@ -72,8 +72,8 @@ const ChatTab = () => {
         const first = [...(newPages[0] || [])];
 
         // Find the existing message index
-        const idx = first.findIndex((m: ChatMessage & { isOptimistic?: boolean; uuid?: string }) =>
-          (m.uuid && m.uuid === message.uuid) ||
+        const idx = first.findIndex((m: ChatMessage & { isOptimistic?: boolean; id?: string }) =>
+          (m.id && m.id === message.id) ||
           (m.isOptimistic && m.content === message.content && m.senderId === message.senderId)
         );
 
@@ -110,11 +110,11 @@ const ChatTab = () => {
 
     const messageId = crypto.randomUUID();
     const newMessage: ChatMessage = {
-      uuid: messageId,
+      id: messageId,
       senderId: currentUser.id,
       recipientId: currentRecipient.id,
       content: currentMessage.trim(),
-      timestamp: new Date().toISOString(),
+      createdAt: Date.now(),
     };
 
     queryClient.setQueryData(['chat', roomId, useTestData], (old: { pages: ChatMessage[][] }) => {
@@ -139,10 +139,10 @@ const ChatTab = () => {
   const groupedMessages = useMemo(() => {
     const allMessages = (infiniteData?.pages.flat() || []) as ChatMessage[];
     // Convert ChatMessage to Message format expected by groupMessagesWithTimestamps
-    const formattedMessages = allMessages.map((msg, index) => ({
+    const formattedMessages = allMessages.map((msg) => ({
       ...msg,
-      id: index, // Generate a unique id for each message
-      timestamp: msg.timestamp || new Date().toISOString(),
+      id: msg.id || crypto.randomUUID(),
+      createdAt: msg.createdAt || Date.now(),
     }));
     return groupMessagesWithTimestamps(formattedMessages);
   }, [infiniteData]);
