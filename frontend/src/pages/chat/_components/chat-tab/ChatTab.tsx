@@ -63,7 +63,7 @@ const ChatTab = () => {
       if (useTestData) return;
       
       queryClient.setQueryData(['chat', roomId, useTestData], (old: { pages: ChatMessage[][] }) => {
-        if (!old) return old;
+        if (!old) return { pages: [[message]], pageParams: [Date.now()] };
 
         // Clone the pages array and the first page
         const newPages = [...old.pages];
@@ -114,12 +114,12 @@ const ChatTab = () => {
       createdAt: Date.now(),
     };
 
+    const optimisticMessage: ChatMessage & { isOptimistic?: boolean } = { 
+      ...newMessage, 
+      isOptimistic: true 
+    };
     queryClient.setQueryData(['chat', roomId, useTestData], (old: { pages: ChatMessage[][] }) => {
-      if (!old) return old;
-      const optimisticMessage: ChatMessage & { isOptimistic?: boolean } = { 
-        ...newMessage, 
-        isOptimistic: true 
-      };
+      if (!old) return { pages: [[optimisticMessage]], pageParams: [Date.now()] };
       return {
         ...old,
         pages: [
