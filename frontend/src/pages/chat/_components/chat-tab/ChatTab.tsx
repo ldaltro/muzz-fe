@@ -17,16 +17,14 @@ const ChatTab = () => {
   const [useTestData, setUseTestData] = useState(false);
 
   const queryClient = useQueryClient();
-  // Ref used by intersection observer to detect when user scrolls to the bottom (to load older messages)
-  const { ref: sentinelRef, inView } = useInView();
+  // Ref used by intersection observer to detect when user scrolls to the top (to load older messages)
+  const { ref: topSentinelRef, inView: topSentinelInView } = useInView({
+    threshold: 0.1,
+  });
   // Ref used to imperatively scroll to bottom when a new message arrives
   const bottomRef = useRef<HTMLDivElement | null>(null);
-
-  // Combine both refs so the same DOM element can be observed and scrolled into view
-  const setBottomAndSentinelRef = useCallback((node: HTMLDivElement | null) => {
-    sentinelRef(node);
-    bottomRef.current = node;
-  }, [sentinelRef]);
+  // Ref to the scrollable container for scroll position management
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   const currentUser = useUserStore((state) => state.currentUser);
   const currentRecipient = useUserStore((state) => state.currentRecipient);
@@ -146,12 +144,26 @@ const ChatTab = () => {
     return groupMessagesWithTimestamps(formattedMessages);
   }, [infiniteData]);
 
-  // When the sentinel enters the viewport at the bottom AND there are more pages, fetch older messages
+  // When the top sentinel enters the viewport AND there are more pages, fetch older messages
   useEffect(() => {
-    if (inView && hasNextPage) {
-      fetchNextPage();
+    if (topSentinelInView && hasNextPage && !isFetchingNextPage) {
+      // Store scroll position before fetching
+      const container = scrollContainerRef.current;
+      if (container) {
+        const scrollHeightBefore = container.scrollHeight;
+        const scrollTopBefore = container.scrollTop;
+        
+        fetchNextPage().then(() => {
+          // Restore scroll position after new messages are added
+          requestAnimationFrame(() => {
+            const scrollHeightAfter = container.scrollHeight;
+            const scrollHeightDelta = scrollHeightAfter - scrollHeightBefore;
+            container.scrollTop = scrollTopBefore + scrollHeightDelta;
+          });
+        });
+      }
     }
-  }, [inView, hasNextPage, fetchNextPage]);
+  }, [topSentinelInView, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Whenever the groupedMessages array changes (new message arrives), scroll to bottom smoothly
   useEffect(() => {
@@ -198,16 +210,22 @@ const ChatTab = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-[5px]">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-[5px]">
         <div className="flex flex-col">
+          {/* Top sentinel for infinite scroll - watches first message */}
+          {groupedMessages.length > 0 && (
+            <>
+              <div ref={topSentinelRef} className="h-1" />
+              {isFetchingNextPage && (
+                <div className="text-center text-sm text-gray-500 py-2">Loading older messages...</div>
+              )}
+            </>
+          )}
           {groupedMessages.map((group, index) => (
             <MessageGroup key={`${group.type}-${group.timestamp}-${index}`} group={group} />
           ))}
-          {/* The same element acts as both the intersection observer target for infinite scroll and the scroll target for auto-scrolling */}
-          <div ref={setBottomAndSentinelRef} className="h-1" />
-          {isFetchingNextPage && (
-            <div className="text-center text-sm text-gray-500">Loading older messages...</div>
-          )}
+          {/* Bottom ref for auto-scrolling to new messages */}
+          <div ref={bottomRef} className="h-1" />
         </div>
       </div>
       <div className="p-[20px] px-[10px] space-y-2 border-t border-gray-200">
