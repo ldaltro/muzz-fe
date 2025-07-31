@@ -1,8 +1,8 @@
-import Header from "./_components/header/Header.tsx";
+import Header from "@/pages/chat/_components/header/Header.tsx";
 import { useState } from "react";
-import ChatTab from "./_components/chat-tab/ChatTab.tsx";
-import ProfileTab from "./_components/profile-tab/ProfileTab.tsx";
-import Tabs from "../../components/tabs/Tabs.tsx";
+import ChatTab from "@/pages/chat/_components/chat-tab/ChatTab.tsx";
+import ProfileTab from "@/pages/chat/_components/profile-tab/ProfileTab.tsx";
+import Tabs from "@/components/tabs/Tabs.tsx";
 
 type TabId = "chat" | "profile";
 
@@ -15,10 +15,10 @@ const Chat = () => {
   const [activeTab, setActiveTab] = useState<TabId>("chat");
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
+    <div className="flex flex-col h-full w-full">
       <Header />
       <Tabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {activeTab === "chat" && <ChatTab />}
         {activeTab === "profile" && <ProfileTab />}
       </div>

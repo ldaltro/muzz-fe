@@ -46,6 +46,7 @@ const UserList = () => {
 									onClick={() =>
 										switchUser(user.id)}
 									disabled={user.id === currentUser.id}
+									ariaLabel={`Switch to user ${user.name}`}
 								>
 									{user.id === currentUser.id ? "Current User" : "Switch to"}
 								</Button>
@@ -66,6 +67,7 @@ const UserList = () => {
 									onClick={() =>
 										messageUser(user.id)}
 									disabled={user.id === currentUser.id}
+									ariaLabel={`Message ${user.name}`}
 								>
 									Message
 								</Button>

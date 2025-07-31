@@ -13,10 +13,32 @@ Most of your time will be spent working in the `frontend/src/pages/chat` directo
 
 ## 🚀 Getting Started
 
+### Quick Start (Recommended)
+
 1. **Clone the repository**
    ```bash
    git clone git@github.com:muzzapp/web-lead-tech-test.git
-   cd muzz-exercise
+   cd web-lead-tech-test
+   ```
+
+2. **Install all dependencies**
+   ```bash
+   npm run install:all
+   ```
+
+3. **Start both servers simultaneously**
+   ```bash
+   npm run dev
+   ```
+
+   This will start both the backend (port 3001) and frontend (port 5173) servers concurrently with colored output for easy monitoring.
+
+### Manual Setup (Alternative)
+
+1. **Clone the repository**
+   ```bash
+   git clone git@github.com:muzzapp/web-lead-tech-test.git
+   cd web-lead-tech-test
    ```
 
 2. **Install dependencies**
@@ -31,16 +53,39 @@ Most of your time will be spent working in the `frontend/src/pages/chat` directo
    cd ..
    ```
 
-3. **Start the development servers**
+3. **Configure environment variables**
+   ```bash
+   # Frontend configuration
+   cd frontend
+   cp .env.example .env.local
+   # Edit .env.local to set your API URL if different from default
+
+   # Backend configuration
+   cd ../backend
+   cp .env.example .env
+   # Edit .env to configure CORS origins and other settings
+   ```
+
+4. **Start the development servers**
    ```bash
    # Start backend server (from backend directory)
    cd backend
    npm run dev
 
-   # Start frontend server (from frontend directory)
+   # Start frontend server (from frontend directory - in a new terminal)
    cd frontend
    npm run dev
    ```
+
+## 📜 Available Scripts
+
+- `npm run dev` - Start both backend and frontend servers simultaneously
+- `npm run dev:backend` - Start only the backend server
+- `npm run dev:frontend` - Start only the frontend server  
+- `npm run install:all` - Install dependencies for root, frontend, and backend
+- `npm run build` - Build the frontend for production
+- `npm run lint` - Run linting on the frontend code
+- `npm run test` - Run tests for both backend and frontend (when available)
 
 ## 📁 Project Structure
 
