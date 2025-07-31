@@ -479,7 +479,7 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        id: expect.any(String),
+        clientId: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "New test message",
@@ -496,7 +496,7 @@ describe("ChatTab", () => {
       fireEvent.submit(form);
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        id: expect.any(String),
+        clientId: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Form submit test",
@@ -512,7 +512,7 @@ describe("ChatTab", () => {
       await user.keyboard("{Enter}");
       
       expect(mockWebSocketState.sendMessage).toHaveBeenCalledWith({
-        id: expect.any(String),
+        clientId: expect.any(String),
         senderId: 1,
         recipientId: 2,
         content: "Message with spaces",

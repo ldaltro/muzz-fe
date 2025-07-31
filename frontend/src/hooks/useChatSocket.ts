@@ -3,6 +3,7 @@ import { io, Socket } from "socket.io-client";
 
 interface ChatMessage {
   id?: string;
+  clientId?: string;
   senderId: number;
   recipientId: number;
   content: string;

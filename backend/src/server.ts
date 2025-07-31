@@ -28,6 +28,7 @@ io.on("connection", (socket: Socket) => {
     const message: ChatMessage = {
       ...data.message,
       id: uuidv4(),
+      clientId: data.message.clientId, // Echo back clientId for reconciliation
       createdAt: Date.now()
     };
 

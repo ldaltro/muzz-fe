@@ -71,10 +71,9 @@ const ChatTab = () => {
         const newPages = [...old.pages];
         const first = [...(newPages[0] || [])];
 
-        // Find the existing message index
-        const idx = first.findIndex((m: ChatMessage & { isOptimistic?: boolean; id?: string }) =>
-          (m.id && m.id === message.id) ||
-          (m.isOptimistic && m.content === message.content && m.senderId === message.senderId)
+        // Find the existing message index by clientId (for optimistic updates)
+        const idx = first.findIndex((m: ChatMessage & { isOptimistic?: boolean }) =>
+          m.clientId && message.clientId && m.clientId === message.clientId
         );
 
         if (idx >= 0) {
@@ -108,9 +107,9 @@ const ChatTab = () => {
     e.preventDefault();
     if (!currentRecipient || !currentMessage.trim() || !isConnected || useTestData) return;
 
-    const messageId = crypto.randomUUID();
+    const clientId = crypto.randomUUID();
     const newMessage: ChatMessage = {
-      id: messageId,
+      clientId: clientId,
       senderId: currentUser.id,
       recipientId: currentRecipient.id,
       content: currentMessage.trim(),
