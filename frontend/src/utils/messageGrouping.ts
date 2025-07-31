@@ -49,9 +49,7 @@ export const groupMessagesWithTimestamps = (
     return [];
   }
 
-  const sortedMessages = [...messages].sort(
-    (a, b) => a.createdAt - b.createdAt
-  );
+  const sortedMessages = [...messages].sort((a, b) => a.createdAt - b.createdAt);
 
   const grouped: MessageGroup[] = [];
   let lastDay: string | null = null;
@@ -62,7 +60,6 @@ export const groupMessagesWithTimestamps = (
     const messageDate = new Date(message.createdAt);
     const currentDay = format(messageDate, "yyyy-MM-dd");
 
-    // Add timestamp heading if it's a new day OR more than 1 hour since last message
     const shouldAddTimestamp = currentDay !== lastDay || 
                               (lastMessageDate && differenceInHours(messageDate, lastMessageDate) >= 1);
 
@@ -78,19 +75,14 @@ export const groupMessagesWithTimestamps = (
       lastDay = currentDay;
     }
 
-    // Check if this message should be grouped with the previous one
     const isGrouped = lastMessage && 
                       lastMessageDate &&
                       lastMessage.senderId === message.senderId &&
                       isWithinGroupingThreshold(lastMessageDate, messageDate);
-
-    // Check if this is the start of a new group
     const nextMessage = sortedMessages[index + 1];
     const isGroupStart = !isGrouped && nextMessage && 
                          nextMessage.senderId === message.senderId &&
                          isWithinGroupingThreshold(messageDate, new Date(nextMessage.createdAt));
-
-    // Check if this is the end of a group
     const isGroupEnd = isGrouped && (!nextMessage || 
                        nextMessage.senderId !== message.senderId ||
                        !isWithinGroupingThreshold(messageDate, new Date(nextMessage.createdAt)));
