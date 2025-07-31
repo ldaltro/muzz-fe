@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useInView } from "react-intersection-observer";
 
@@ -18,7 +18,16 @@ const ChatTab = () => {
   const [useTestData, setUseTestData] = useState(false);
 
   const queryClient = useQueryClient();
-  const { ref, inView } = useInView();
+  // Ref used by intersection observer to detect when user scrolls to the bottom (to load older messages)
+  const { ref: sentinelRef, inView } = useInView();
+  // Ref used to imperatively scroll to bottom when a new message arrives
+  const bottomRef = useRef<HTMLDivElement | null>(null);
+
+  // Combine both refs so the same DOM element can be observed and scrolled into view
+  const setBottomAndSentinelRef = useCallback((node: HTMLDivElement | null) => {
+    sentinelRef(node);
+    bottomRef.current = node;
+  }, [sentinelRef]);
 
   const currentUser = useUserStore((state) => state.currentUser);
   const currentRecipient = useUserStore((state) => state.currentRecipient);
@@ -120,11 +129,21 @@ const ChatTab = () => {
     return groupMessagesWithTimestamps([...allMessages, ...localMessagesNotInQuery]);
   }, [infiniteData, messages, useTestData]);
 
+  // When the sentinel enters the viewport at the bottom AND there are more pages, fetch older messages
   useEffect(() => {
     if (inView && hasNextPage) {
       fetchNextPage();
     }
   }, [inView, hasNextPage, fetchNextPage]);
+
+  // Whenever the groupedMessages array changes (new message arrives), scroll to bottom smoothly
+  useEffect(() => {
+    // Delay executed to allow DOM to update with the newly rendered message before scrolling
+    const timeout = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 0);
+    return () => clearTimeout(timeout);
+  }, [groupedMessages]);
 
 
   const getConnectionStatus = () => {
@@ -167,7 +186,8 @@ const ChatTab = () => {
           {groupedMessages.map((group, index) => (
             <MessageGroup key={`${group.type}-${group.timestamp}-${index}`} group={group} />
           ))}
-          <div ref={ref} className="h-1" />
+          {/* The same element acts as both the intersection observer target for infinite scroll and the scroll target for auto-scrolling */}
+          <div ref={setBottomAndSentinelRef} className="h-1" />
           {isFetchingNextPage && (
             <div className="text-center text-sm text-gray-500">Loading older messages...</div>
           )}
