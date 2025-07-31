@@ -23,6 +23,12 @@ describe('useChatSocket', () => {
         listeners[event] = cb;
         return mockSocket;
       }),
+      off: vi.fn((event: string, cb: (...args: any[]) => void) => {
+        if (listeners[event] === cb) {
+          delete listeners[event];
+        }
+        return mockSocket;
+      }),
       emit: vi.fn(),
       disconnect: vi.fn(),
       connected: true,
