@@ -53,7 +53,20 @@ Most of your time will be spent working in the `frontend/src/pages/chat` directo
    cd ..
    ```
 
-3. **Start the development servers**
+3. **Configure environment variables**
+   ```bash
+   # Frontend configuration
+   cd frontend
+   cp .env.example .env.local
+   # Edit .env.local to set your API URL if different from default
+
+   # Backend configuration
+   cd ../backend
+   cp .env.example .env
+   # Edit .env to configure CORS origins and other settings
+   ```
+
+4. **Start the development servers**
    ```bash
    # Start backend server (from backend directory)
    cd backend

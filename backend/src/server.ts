@@ -8,11 +8,19 @@ import { SocketMessage, ChatMessage } from "./types";
 
 const app = express();
 const server = http.createServer(app);
+const allowedOrigins = process.env.ALLOWED_ORIGINS && process.env.ALLOWED_ORIGINS.split(',');
+
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: {
+    origin: allowedOrigins,
+    credentials: true
+  },
 });
 
-app.use(cors({ origin: "*" }));
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 

@@ -30,7 +30,7 @@ export const useChatSocket = (
     setConnectionState('connecting');
     setLastError(null);
 
-    const newSocket = io("http://localhost:3001", {
+    const newSocket = io(import.meta.env.VITE_API_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
