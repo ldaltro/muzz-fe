@@ -26,56 +26,46 @@ Most of your time will be spent working in the `frontend/src/pages/chat` directo
    npm run install:all
    ```
 
-3. **Start both servers simultaneously**
+3. **Set up environment variables (Required)**
+   ```bash
+   # Copy environment templates - this is required for the app to work
+   cp frontend/.env.example frontend/.env.local
+   cp backend/.env.example backend/.env
+   
+   # Environment files are pre-configured for development
+   # No editing needed for basic setup
+   ```
+
+4. **Start both servers simultaneously**
    ```bash
    npm run dev
    ```
 
    This will start both the backend (port 3001) and frontend (port 5173) servers concurrently with colored output for easy monitoring.
 
-### Manual Setup (Alternative)
+### Environment Configuration Details
 
-1. **Clone the repository**
-   ```bash
-   git clone git@github.com:muzzapp/web-lead-tech-test.git
-   cd web-lead-tech-test
-   ```
+**Required Environment Setup:**
 
-2. **Install dependencies**
-   ```bash
-   # Install frontend dependencies
-   cd frontend
-   npm install
+The application requires both frontend and backend environment variables to function. These are provided via `.env` files:
 
-   # Install backend dependencies
-   cd ../backend
-   npm install
-   cd ..
-   ```
+**Frontend Environment (.env.local):**
+- `VITE_API_URL`: Backend API URL (default: http://localhost:3001)
+- Pre-configured for development on port 5173
 
-3. **Configure environment variables**
-   ```bash
-   # Frontend configuration
-   cd frontend
-   cp .env.example .env.local
-   # Edit .env.local to set your API URL if different from default
+**Backend Environment (.env):**
+- `PORT`: Server port (default: 3001)
+- `ALLOWED_ORIGINS`: CORS origins for frontend (default: http://localhost:5173)
+- `NODE_ENV`: Environment mode (development/production)
 
-   # Backend configuration
-   cd ../backend
-   cp .env.example .env
-   # Edit .env to configure CORS origins and other settings
-   ```
+**Quick Setup Commands:**
+```bash
+# From project root - run these commands to set up required environment
+cp frontend/.env.example frontend/.env.local
+cp backend/.env.example backend/.env
+```
 
-4. **Start the development servers**
-   ```bash
-   # Start backend server (from backend directory)
-   cd backend
-   npm run dev
-
-   # Start frontend server (from frontend directory - in a new terminal)
-   cd frontend
-   npm run dev
-   ```
+**No additional configuration needed** - files are pre-configured for localhost development.
 
 ## 📜 Available Scripts
 
